@@ -4,7 +4,7 @@
 # Задача: попробуйте улучшить алгоритм автора модуля
 # 
 # Автор: https://github.com/13gi
-# Репозиторий: https://github.com/13gi/ds-skf
+# Репозиторий: https://github.com/13gi/skillfactory_rds/tree/master/module_0
 #
 # Аннтоация
 #   game_core_v3
