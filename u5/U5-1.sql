@@ -257,21 +257,216 @@ ORDER BY cu.cust_name, avg_weight DESC
 
 
 /* ---------------------------------------
-	Задание 4.
+	Задание 3.2.4.1
+------------------------------------------
+Напишите запрос, который выводит 
+	все названия штатов 
+	и количество клиентов в них, 
+используя LEFT JOIN. 
+
+Упорядочите список штатов по количеству клиентов по убыванию, 
+а затем по штату в алфавитном порядке.
+
 ------------------------------------------ */
+
+-- |------
+-- | этот джоин в другом направлении
+-- |
+
+--SELECT
+--	ci.state AS customer_state
+--	, count(cu.cust_id) AS customer_count 
+--FROM shipping.customer cu
+--LEFT JOIN shipping.city ci ON ci.city_id = cu.city_id 
+--GROUP BY ci.state
+--ORDER BY customer_count DESC, customer_state
+
+SELECT
+	ci.state AS customer_state
+	, count(cu.cust_id) AS customer_count 
+FROM shipping.city as ci
+LEFT JOIN shipping.customer AS cu ON ci.city_id = cu.city_id 
+GROUP BY ci.state
+ORDER BY customer_count DESC, customer_state
+
 
 
 /* ---------------------------------------
-	Задание 4.
+	3.2.5
 ------------------------------------------ */
+
+-- можно найти клиентов, которые никогда не совершали заказ
+--
+select 
+	c.cust_id
+from 
+	shipping.customer c 
+	left join shipping.shipment s on c.cust_id = s.cust_id
+where s.ship_id is null
+
+
+-- |------
+-- | Возьмем два города: в один город доставки есть, а в другой — нет
+-- |
+select 
+    c.city_id, 
+    c.city_name,
+    s.ship_id
+    , s.weight 
+from shipping.city c
+    left join shipping.shipment s on s.city_id = c.city_id
+where c.city_id in (697,698)
+
+
+-- |------
+-- | Теперь попробуем отфильтровать доставки с весом более 1000 кг:
+-- |
+select 
+    c.city_id, 
+    c.city_name,
+    s.ship_id
+from shipping.city c
+    left join shipping.shipment s on s.city_id = c.city_id
+where c.city_id in (697,698) and s.weight > 1000
+
+-- |------
+-- | 
+-- |
+
+
+
+-- |------
+-- | 
+-- |
+
+/* ---------------------------------------
+	Задание 3.2.5.1
+	Выполните следующие запросы в Metabase и проверьте, какие из них возвращают значение, отличное от null.
+	
+------------------------------------------ */
+SELECT TRUE AND NULL 
+
+SELECT TRUE or NULL -- V
+
+SELECT NULL IS NULL -- V
+
+SELECT NULL = NULL 
 
 
 /* ---------------------------------------
-	Задание 4.
+	Задание 3.2.5.2
+------------------------------------------
+Напишите запрос, который выводит 
+	названия городов, куда осуществлялись доставки, 
+	но их вес меньше 10000. 
+	
+Используйте несколько операторов JOIN на таблицу с доставками. 
+Отсортируйте по названию города.
+
 ------------------------------------------ */
+
+select 
+	ci.city_name
+from shipment s
+    join shipment as s2 on s.weight=s2.weight
+    left join city as ci on s2.city_id=ci.city_id
+where s.weight < 10000
+group by ci.city_name
+ORDER BY ci.city_name
 
 
 
 /* ---------------------------------------
-	Задание 4.
+	Задание 3.2.5.3
+------------------------------------------
+Напишите запрос, который выдает сводную статистику по городам: 
+	количество 
+		клиентов, 
+		заказов 
+		и водителей. 
+Оставьте города, в которых хотя бы один из этих показателей ненулевой, 
+и отсортируйте по первому столбцу. 
+
+Используйте LEFT JOIN для таблицы с городами.
+
 ------------------------------------------ */
+
+select 
+	ci.city_name,
+	count(DISTINCT cu.cust_id),
+	count(DISTINCT s.ship_id),
+	count(DISTINCT d.driver_id)
+from city AS ci
+LEFT JOIN customer cu ON cu.city_id = ci.city_id
+LEFT JOIN driver d ON d.city_id = ci.city_id 
+LEFT JOIN shipment s ON s.city_id = ci.city_id 
+GROUP BY ci.city_name
+HAVING (count(cu.cust_id) + count(s.ship_id) + count(d.driver_id) ) > 0
+ORDER BY 1
+
+
+
+
+
+/* ---------------------------------------
+	Задание 
+------------------------------------------
+
+
+------------------------------------------ */
+
+
+
+-- |------
+-- | 
+-- |
+
+
+
+
+/* ---------------------------------------
+	Задание 
+------------------------------------------
+
+
+------------------------------------------ */
+
+
+
+-- |------
+-- | 
+-- |
+
+
+
+
+
+/* ---------------------------------------
+	Задание 
+------------------------------------------
+
+
+------------------------------------------ */
+
+
+
+-- |------
+-- | 
+-- |
+
+
+
+
+/* ---------------------------------------
+	Задание 
+------------------------------------------
+
+
+------------------------------------------ */
+
+
+
+-- |------
+-- | 
+-- |
+
