@@ -15,7 +15,13 @@ from
 
 
 /* ---------------------------------------
-	Задание 3.2.1
+	Задание 3.2.2.1
+		
+Напишите запрос в Metabase, который считает среднее население города в таблице shipping.city. 
+Сохраните или скопируйте его результат.
+После этого в поле ответа напишите запрос, который выводит количество городов с населением выше среднего 
+(подставив результат предыдущего запроса в условие) и оставьте любой комментарий, объясняющий, откуда было взято это число.
+
 ------------------------------------------ */
 
 select 
@@ -24,32 +30,46 @@ select
 from shipping.city as c
 group by city_name 
 
-
 /* 
- select avg(population) from shipping.city LIMIT 1
+ select avg(population) from shipping.city
  165718.755407653910
 */
-SELECT count(c.city_name)
+SELECT count(DISTINCT c.city_name)
 FROM shipping.city c
 WHERE c.population > 165718.755407653910
 
 
-/*
-	Второе решение
-*/
+-- |------
+-- | Второе решение
+-- |	
 SELECT 
 	count(DISTINCT city_name)
 FROM shipping.city
 WHERE population > (select avg(population) from shipping.city LIMIT 1)
-;
+
 
 
 
 /* ---------------------------------------
-	Задание 3.2.2
+	Задание 3.2.2.2
 ------------------------------------------ */
-SELECT * FROM shipping.city c 
+SELECT 
+	city_name , area 
+FROM shipping.city c 
+ORDER BY 2 DESC 
 
+
+
+
+/*
+Средняя площадь города получена из этого запроса:
+select avg(area) from shipping.city
+Результат: 56.7266222961730449
+*/
+SELECT 
+	count(DISTINCT city_name)
+FROM shipping.city
+WHERE area > 56.7266222961730449
 
 
 /*
@@ -409,36 +429,91 @@ ORDER BY 1
 
 
 /* ---------------------------------------
-	Задание 
+	Задание 3.2.6.1 
 ------------------------------------------
-
+Напишите запрос, который выведет имена всех водителей и их телефоны. 
+В случае, если телефон не заполнен, укажите номер из одних девяток в том же формате. 
+Отсортируйте по имени водителя в алфавитном порядке.
 
 ------------------------------------------ */
 
-
-
--- |------
--- | 
--- |
+select 
+	d.first_name ,
+	coalesce(d.phone, '(999) 999-9999') phone
+from driver d 
+order by 1
 
 
 
 
 /* ---------------------------------------
-	Задание 
+	Задание 3.2.6.2 
+------------------------------------------
+Напишите запрос, который выдает сводную статистику по городам 
+(для идентификации используйте city_id): 
+количество клиентов, заказов и водителей. Не используйте таблицу shipping.city. 
+
+Оставьте города, в которых хотя бы один из этих показателей ненулевой, 
+отсортируйте по столбцу с id города.
+
+------------------------------------------ */
+
+select 
+	coalesce(s.city_id, d.city_id, c.city_id) city_id,
+	count(DISTINCT c.cust_id),
+	count(DISTINCT s.ship_id),
+	count(DISTINCT d.driver_id)
+from customer c
+full outer JOIN shipment s ON c.city_id = s.city_id
+full outer join driver d ON d.city_id = s.city_id 
+GROUP BY 1
+HAVING (count(c.cust_id) + count(s.ship_id) + count(d.driver_id)) > 0
+ORDER BY 1
+
+
+
+/* ---------------------------------------
+	Задание 3.2.7.1 
+------------------------------------------
+
+Напишите запрос, который выводит все возможные уникальные пары даты доставки и имени водителя, 
+упорядоченные по дате и имени по возрастанию.
+
+------------------------------------------ */
+
+select 
+	DISTINCT s.ship_date,
+	d.first_name 
+from driver d 
+cross join shipment s
+order by 1, 2
+
+
+/* ---------------------------------------
+	Задание 3.2.7.2 
 ------------------------------------------
 
 
 ------------------------------------------ */
 
+select 
+	s.ship_date,
+	max(c.area) area,
+	min(t.model_year) model_year
+from 
+	shipping.shipment s,
+	shipping.city c,
+	shipping.truck t
+where 
+	s.city_id = c.city_id
+	and s.truck_id = t.truck_id
+group by 1
+order by 1
 
 
 -- |------
 -- | 
 -- |
-
-
-
 
 
 /* ---------------------------------------
