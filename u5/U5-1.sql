@@ -547,22 +547,203 @@ order by 1
 
 
 /* ---------------------------------------
-	Задание 
-------------------------------------------
-
+	4.1. UNION 
 
 ------------------------------------------ */
+SELECT 
+ t.table_name object_name,
+ 'таблица' object_type
+FROM 
+ information_schema."tables" t
+union all
+SELECT 
+ c.column_name object_name,
+ 'столбец' object_type
+FROM 
+ information_schema.columns c
+union  all
+select 
+ s.schema_name,
+ 'схема' 
+from 
+ information_schema.schemata s
+order by 1
+
+
+
+
+/* ---------------------------------------
+	Задание 4.1.1
+------------------------------------------
+Напишите запрос, который создает уникальный алфавитный справочник 
+всех городов, штатов, имен водителей и производителей грузовиков. 
+Результатом запроса должны быть два столбца 
+(название объекта и тип объекта — city, state, driver, truck). 
+
+Отсортируйте список по названию объекта, а затем по типу.
+
+------------------------------------------ */
+
+SELECT 
+	c.city_name AS object_name,
+	'city' AS object_type
+FROM city AS c 
+UNION
+SELECT 
+	c2.state AS object_name,
+	'state' AS object_type
+FROM city AS c2 
+UNION
+SELECT 
+	d.first_name AS object_name,
+	'driver' AS object_type
+FROM driver d
+UNION
+SELECT 
+	t.make AS object_name,
+	'truck' AS object_type
+FROM truck t
+ORDER BY 1, 2
+
+/* ---------------------------------------
+	4.2. UNION и ограничения типов данных 
+------------------------------------------ */
+
+select 
+ c.city_id::text
+from 
+ shipping.city c
+union all
+select 
+ cc.city_name
+from 
+ shipping.city cc
+
+ 
+/* ---------------------------------------
+	Задание 4.2.1
+------------------------------------------ */
+
+ SELECT 
+ 	 d.zip_code::TEXT 
+ 	,d.first_name 
+ 	,'zip' AS type
+ FROM driver d 
+-- WHERE d.zip_code NOTNULL 
+ UNION
+  SELECT 
+ 	 d.phone 
+ 	,d.first_name
+ 	, 'phone' AS type
+ FROM driver d 
+-- WHERE d.phone NOTNULL 
+ ORDER BY 1, 2
+
+/* ---------------------------------------
+	Задание 4.2.2
+------------------------------------------ */
+
+
+SELECT '541' > '-500' AS result
+-- true
+
+
+/* ---------------------------------------
+	4.3. UNION ALL и промежуточные итоги 
+
+------------------------------------------ */
+select  
+ c.city_name,
+ c.population
+from 
+ shipping.city c
+union all
+select 
+ 'total' total_name,
+ sum(c.population) total_population
+from 
+ shipping.city c
+order by 2 desc
+
+
+
+/* ---------------------------------------
+	Задание 4.3.1
+
+------------------------------------------ */
+
+SELECT 
+s.ship_date::text AS date_period,
+count(s.ship_id) as cnt_shipping
+FROM shipment s
+GROUP BY s.ship_date
+UNION 
+SELECT 
+	'total_shippings',
+	count(s.ship_id) 
+FROM shipment s 
+ORDER BY 1 desc
 
 
 
 -- |------
--- | 
+-- | 4.4. Другие способы применения UNION
 -- |
+-- |	UNION как аналог LEFT JOIN
+
+select 
+ d.first_name,
+ d.last_name,
+ 'телефон заполнен' phone_info
+from 
+ shipping.driver d
+where phone is not null
+union all 
+select 
+ d.first_name,
+ d.last_name,
+ 'телефон не заполнен' phone_info
+from 
+ shipping.driver d
+where phone is  null
 
 
 
 
 
+/* ---------------------------------------
+	Задание 4.4.1
+------------------------------------------ */
+
+SELECT 
+	c.city_name AS city_name,
+	count(s.ship_id) AS shippings_fake
+FROM city c 
+JOIN shipment s ON s.city_id = c.city_id 
+GROUP BY c.city_name 
+HAVING count(s.ship_id) > 10
+UNION
+SELECT 
+	c.city_name AS city_name,
+	count(s.ship_id) + 5 AS shippings_fake
+FROM city c 
+JOIN shipment s ON s.city_id = c.city_id 
+GROUP BY c.city_name 
+HAVING count(s.ship_id) <= 10
+ORDER BY 2 DESC, 1
+
+
+
+-- |------
+-- | 	Ручная генерация
+-- |	UNION можно использовать для создания справочников прямо в коде запроса
+
+
+select 'a'::text letter, '1' ordinal_position
+union 
+select 'b','2' ordinal_position
+union 
+select 'c','3' ordinal_position
 
 
 /* ---------------------------------------
@@ -572,61 +753,75 @@ order by 1
 
 ------------------------------------------ */
 
+select 
+	c.* 
+from 
+	information_schema."tables" t
+		join information_schema.columns c 
+			on t.table_name = c.table_name 
+			and t.table_schema = c.table_schema 
+--WHERE shipping.shipment
 
 
--- |------
--- | 
--- |
-
-
-
+SELECT 
+	c.column_name AS column_name
+FROM information_schema.COLUMNS c
+WHERE
+	c.table_name = 'shipment' 
+	AND c.table_schema = 'shipping'
+EXCEPT 
+SELECT 
+	c.column_name
+FROM information_schema.COLUMNS c
+WHERE
+	c.table_name != 'shipment' 
+	AND c.table_schema = 'shipping'
+ORDER BY 1	
 
 
 
 /* ---------------------------------------
-	Задание 
+	Задание 4.5.2
 ------------------------------------------
-
+Выведите список id городов, в которых есть и клиенты, и доставки, и водители.
 
 ------------------------------------------ */
 
+SELECT 
+	c.city_id 
+FROM city c 
+INTERSECT
+SELECT
+	c2.city_id 
+FROM customer c2 
+INTERSECT
+SELECT
+	s.city_id 
+FROM shipment s 
+INTERSECT
+SELECT 
+	d.city_id 
+FROM driver d 
 
 
--- |------
--- | 
+-- |------------------------------------------------------------------------
+-- | 5.1. EXISTS
 -- |
-
-
-
-
+-- |	
 
 
 
 /* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
+	Задание 5.1.1
 ------------------------------------------ */
 
+SELECT 
+	DISTINCT c.state 
+FROM shipment s 
+LEFT JOIN city c ON c.city_id = s.city_id 
+ORDER BY 1
 
 
--- |------
--- | 
--- |
-
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
------------------------------------------- */
 
 
 
@@ -634,31 +829,21 @@ order by 1
 -- | 
 -- |
 
-
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
------------------------------------------- */
-
-
-
--- |------
--- | 
--- |
-
-
-
-
-
-
+SELECT 
+	distinct state
+from 
+	shipping.city c
+where 
+	exists 
+			(
+				select 
+					*
+				from 
+					shipping.shipment s 
+				where 
+					s.city_id = c.city_id
+				)
+order by 1
 
 
 /* ---------------------------------------
@@ -666,81 +851,7 @@ order by 1
 ------------------------------------------
 
 
------------------------------------------- */
 
-
-
--- |------
--- | 
--- |
-
-
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
------------------------------------------- */
-
-
-
--- |------
--- | 
--- |
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
------------------------------------------- */
-
-
-
--- |------
--- | 
--- |
-
-
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
------------------------------------------- */
-
-
-
--- |------
--- | 
--- |
-
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
 
 
 ------------------------------------------ */
