@@ -24,28 +24,23 @@ from
 
 ------------------------------------------ */
 
-select 
-	city_name, avg(population)
---	, min(population), max(population), count(population) 
-from shipping.city as c
-group by city_name 
-
 /* 
+ Получена из этого запроса:
  select avg(population) from shipping.city
  165718.755407653910
 */
-SELECT count(DISTINCT c.city_name)
-FROM shipping.city c
-WHERE c.population > 165718.755407653910
+SELECT count(c.city_id) -- count(DISTINCT city_name) этот вариант платформа не принимает
+FROM city c
+WHERE population > 165718.76 -- 165718.755407653910
 
 
 -- |------
--- | Второе решение
+-- | Второе решение - более точное. Так как отбрасывает повторяющиеся города
 -- |	
 SELECT 
 	count(DISTINCT city_name)
-FROM shipping.city
-WHERE population > (select avg(population) from shipping.city LIMIT 1)
+FROM city
+WHERE population > (select avg(population) from city LIMIT 1)
 
 
 
