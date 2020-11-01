@@ -799,10 +799,33 @@ SELECT
 FROM driver d 
 
 
+
+-- |----------------------------
+-- | Дополнительный анализ данных
+-- |
+SELECT 
+	city_name	
+	,count(city_name) 
+FROM city
+GROUP BY city_name 
+HAVING count(city_name) > 1
+ORDER BY 2 DESC, 1
+
+
+SELECT  
+	c.city_name
+	, state 
+FROM city c
+WHERE c.city_name in ('Springfield', 'Lakewood', 'Bloomington')
+ORDER BY 1, 2
+
+
+
 -- |------------------------------------------------------------------------
 -- | 5.1. EXISTS
 -- |
 -- |	
+
 
 
 
@@ -818,48 +841,276 @@ ORDER BY 1
 
 
 
+SELECT
+	DISTINCT state
+FROM
+	shipping.city c
+WHERE
+	EXISTS (
+	SELECT
+		*
+	FROM
+		shipping.shipment s
+	WHERE
+		s.city_id = c.city_id )
+ORDER BY
+	1
+
+
+/* ---------------------------------------
+	Задание 5.1.2 
+------------------------------------------
+выводит все схемы и названия таблиц в базе, в которых нет первичных ключей. 
+Отсортируйте оба столбца в алфавитном порядке (по возрастанию).
+------------------------------------------ */
+
+SELECT
+	t.table_schema,
+	t.table_name
+FROM
+	information_schema.tables t
+WHERE
+	NOT EXISTS(
+	SELECT
+		*
+	FROM
+		information_schema.table_constraints c
+	WHERE
+		c.table_schema = t.table_schema
+		AND c.table_name = t.table_name
+		AND c.constraint_type IN ('PRIMARY KEY')
+		)
+	ORDER BY 1, 2
+	
 
 
 -- |------
 -- | 
 -- |
 
+
 SELECT 
-	distinct state
+	city_name,
+	exists 
+		(
+			select 
+				*
+			from 
+				shipping.shipment s 
+			where 
+				s.city_id = c.city_id
+			) has_shipments
 from 
 	shipping.city c
-where 
-	exists 
-			(
-				select 
-					*
-				from 
-					shipping.shipment s 
-				where 
-					s.city_id = c.city_id
-				)
 order by 1
 
 
+
 /* ---------------------------------------
-	Задание 
+	Задание 5.1.3 
 ------------------------------------------
+Напишите запрос, который выводит названия всех городов и булевы поля, 
+показывающие наличие клиентов, наличие водителей и наличие доставок в этом городе. 
+
+Добавьте сортировку по названию городов.
+------------------------------------------ */
+SELECT 
+	c.city_name
+	, exists(
+		SELECT * FROM customer c2 
+		WHERE c2.city_id  = c.city_id 
+	) has_customer
+	, exists(
+		SELECT * FROM driver d2 
+		WHERE d2.city_id  = c.city_id 
+	) has_driver
+	, exists(
+		SELECT * FROM shipment s2 
+		WHERE s2.city_id  = c.city_id 
+	) has_customer
+FROM city c 
+order by 1
 
 
 
 
+-- |-----------------------------------------------------------
+-- | 5.2. IN
+-- |
+SELECT
+	DISTINCT state
+FROM
+	shipping.city c
+WHERE
+	c.city_id IN (
+	SELECT
+		d.city_id
+	FROM
+		shipping.driver d
+	WHERE
+		d.phone IS NOT NULL )
+ORDER BY
+	1
 
+
+	
+select 
+	*
+from 
+	information_schema."tables" t
+where t.table_name in (
+						select 
+							c.table_name
+						from 
+							information_schema.columns c
+						where 
+							c.data_type = 'numeric'
+							and c.table_schema = 'shipping'
+						union  
+						select 
+							cc.table_name
+						from 
+							information_schema.table_constraints cc
+						where 
+							cc.constraint_type = 'FOREIGN KEY'
+							and cc.constraint_schema = 'shipping'
+						)	
+
+
+
+
+/* ---------------------------------------
+	Задание 5.2.1
+------------------------------------------
+	Напишите запрос, который выводит все поля из таблицы доставок по водителям, 
+	совершившим более 90 доставок.
+	
+	Отсортируйте запрос по первому и второму столбцу.
+------------------------------------------ */
+
+SELECT 
+	s.*
+FROM shipment s
+WHERE 
+	driver_id IN (
+		SELECT driver_id
+			--, count(ship_id) 
+		FROM shipment 
+		GROUP BY driver_id 
+		HAVING count(ship_id) > 90 
+		)
+ORDER BY 1, 2
+
+
+
+
+-- |------------------------------------------------------------------------------------------------
+-- | 	5.3. SELECT FROM SELECT
+-- | 
+-- | 
+-- | ------------
+-- | запрос выводит среднее по средним массам груза доставки на каждого водителя
+-- | 
+
+SELECT
+	avg(a.avg_weight) avg_avg_weight
+FROM
+	(
+	SELECT
+		s.driver_id, avg(s.weight) avg_weight
+	FROM
+		shipping.shipment s
+	GROUP BY 1 
+	) a
+
+	
+-- | ------------
+-- | запрос выводит идентификатор доставки, ее дату, массу груза, 
+-- | среднюю массу доставленных в этот день грузов и признак того, 
+-- | что масса груза больше средней в этот день на сто кг.
+-- | 
+
+	
+select 
+	s.ship_id,
+	s.ship_date,
+	s.weight,
+	a.avg_weight avg_weight_this_day,
+	s.weight > a.avg_weight + 100 is_heavyweighted
+from 
+	(
+	select 
+		s.ship_date,
+		avg(s.weight)avg_weight
+	from 
+		shipping.shipment s
+	group by 1
+	) a 
+	join  shipping.shipment s 
+		on a.ship_date = s.ship_date
+
+
+/* ---------------------------------------
+	Задание 5.3.1 
+------------------------------------------
+	Напишите запрос, который найдет водителя, совершившего наибольшее количество доставок одному клиенту. 
+	В выводе должна быть одна строка, которая содержит
+	 	имя водителя (first_name), 
+	 	имя клиента 
+	 	и количество доставок водителя этому клиенту.
+	
+------------------------------------------ */
+SELECT 
+--	d.driver_id,
+	d2.first_name
+	, c.cust_name 
+	, d.count_customer_shipment
+FROM 
+	(SELECT 
+		driver_id 
+		, cust_id 
+		, count(ship_id) AS count_customer_shipment
+	FROM shipment
+	GROUP BY driver_id , cust_id 
+	ORDER BY count(ship_id) DESC 
+	LIMIT 1
+			) AS d
+JOIN driver d2 ON d2.driver_id = d.driver_id
+JOIN customer c ON c.cust_id = d.cust_id
+
+
+
+-- проверочный вывод данных
+SELECT * FROM shipment s 
+WHERE driver_id  = 27 and cust_id = 1775
+
+
+
+/* ---------------------------------------
+	Задание 5.3.2 
+------------------------------------------
+	
+ы	
 ------------------------------------------ */
 
 
 
--- |------
--- | 
--- |
+
+/* ---------------------------------------
+	Задание 5.3.3 
+------------------------------------------
+	
+	
+------------------------------------------ */
 
 
 
-
+/* ---------------------------------------
+	Задание 5.3.4 
+------------------------------------------
+	
+	
+------------------------------------------ */
 
 
 
@@ -867,32 +1118,8 @@ order by 1
 /* ---------------------------------------
 	Задание 
 ------------------------------------------
-
-
+	
+	
 ------------------------------------------ */
 
-
-
--- |------
--- | 
--- |
-
-
-
-
-
-
-
-/* ---------------------------------------
-	Задание 
-------------------------------------------
-
-
------------------------------------------- */
-
-
-
--- |------
--- | 
--- |
 
