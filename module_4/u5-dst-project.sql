@@ -1,0 +1,458 @@
+-- |----------------------------------------
+-- |
+-- | DBeaver: перед выполнением скриптов неободимо выбрать схему dst_project
+-- | ПКМ \ Задать по умолчанию
+-- | 
+-- | 
+
+SHOW search_path
+
+SELECT current_schema()
+
+SELECT current_schemas(true)
+
+
+/* ---------------------------------------
+	Задание 4.1
+------------------------------------------
+
+	База данных содержит список аэропортов практически всех крупных городов России. 
+	В большинстве городов есть только один аэропорт. 
+	Исключение составляет:
+	
+------------------------------------------ */
+
+select 
+	city,
+	count(airport_name) as airport_count
+from airports
+group by city 
+having count(airport_name) > 1
+order by 2 desc 
+
+
+/* ---------------------------------------
+	Задание 4.2
+------------------------------------------ */
+
+
+-- |----------------------------------------
+-- | Вопрос 1. Таблица рейсов содержит всю информацию о прошлых, текущих и запланированных рейсах. 
+-- | Сколько всего статусов для рейсов определено в таблице?
+-- |
+
+select 
+	--distinct status
+	count(distinct status)
+from flights f 
+
+
+/*
+Departed
+Arrived
+On Time
+Cancelled
+Delayed
+Scheduled
+*/
+
+-- |----------------------------------------
+-- | Вопрос 2. Какое количество самолетов находятся в воздухе на момент среза в базе 
+-- | (статус рейса «самолёт уже вылетел и находится в воздухе»).
+-- |
+
+
+select 
+	count(*)
+from flights f 
+where status = 'Departed'
+
+
+-- |----------------------------------------
+-- | Вопрос 3. Места определяют схему салона каждой модели. 
+-- | Сколько мест имеет самолет модели  (Boeing 777-300)?
+-- |
+
+select 
+	count(s.*)
+from aircrafts a
+join seats s on s.aircraft_code = a.aircraft_code 
+where 
+	a.aircraft_code = '773'
+
+
+
+
+
+-- |----------------------------------------
+-- | Вопрос 4. Сколько состоявшихся (фактических) рейсов 
+-- | было совершено между 1 апреля 2017 года и 1 сентября 2017 года?
+-- |
+-- | P.S. 
+-- | состоявшийся рейс означает, что он не отменён, и самолёт прибыл в пункт назначения
+-- | 
+
+
+
+select 
+	count(f.flight_id)
+from flights f 
+where status = 'Arrived'
+	and (actual_departure between '2017-04-01' and '2017-09-01'
+		or actual_arrival between '2017-04-01' and '2017-09-01')
+
+
+		
+
+
+/* ---------------------------------------
+	Задание 4.3 
+------------------------------------------ */
+	
+-- |----------------------------------------
+-- | Вопрос 1. Сколько всего рейсов было отменено по данным базы?
+-- |
+-- |
+	
+select 
+	count(*)
+	--f.*
+from flights f 
+where status = 'Cancelled'
+	
+	
+-- |----------------------------------------
+-- | Вопрос 2. Сколько самолетов моделей типа: 
+-- | 	Boeing, 
+-- | 	Sukhoi Superjet, 
+-- | 	Airbus 
+-- | находится в базе авиаперевозок?
+
+select
+	split_part(a.model, ' ', 1) as model,
+	count(*) 
+from aircrafts a 
+where a.model like 'Boeing%'
+		or a.model like 'Sukhoi Superjet%'
+		or a.model like 'Airbus%'
+group by 1
+order by 1
+
+
+
+/* -----------------------------------------------------------------------------------
+	Размышление на тему - сколько же на самом деле самолетов выполняют полетное расписание 
+
+-------------------------------------------------------------------------------------- */
+
+-- |----------------------------------------
+-- | В задании смущает, что указанное полетное расписание не смогли выполнить бы самолеты в таком количестве.
+-- | По логике полетное расписание должно перекрываться парком самолетов.
+-- | Для простоты посчитаем что 1 самолет выполняет 1 рейс "туда" и "обратно"
+-- | Не будем учитывать более слжоные перестановки, а также что некоторые самолеты могут исполнять более 2-х рейсов
+
+
+-- |----------------------------------------
+-- | Boeing
+-- |
+
+select 
+	count(distinct f.flight_no)/2 as model_count_Boeing
+	--, f.aircraft_code 
+from dst_project.flights f 
+join dst_project.aircrafts a on a.aircraft_code  = f.aircraft_code 
+where a.model like 'Boeing%'
+-- 36
+
+
+-- |----------------------------------------
+-- | Sukhoi Superjet
+-- |
+
+select 
+	count(distinct f.flight_no)/2 as model_count_Sukhoi_Superjet
+	--, f.aircraft_code 
+from dst_project.flights f 
+join dst_project.aircrafts a on a.aircraft_code  = f.aircraft_code 
+where a.model like 'Sukhoi Superjet%'
+-- 79
+
+
+-- |----------------------------------------
+-- | Airbus
+-- |
+
+select 
+	count(distinct f.flight_no)/2 as model_count_Airbus
+	--, f.aircraft_code 
+from dst_project.flights f 
+join dst_project.aircrafts a on a.aircraft_code  = f.aircraft_code 
+where a.model like 'Airbus%'
+-- 39
+
+-- | 
+-- | Вывод - полученные цифры более правдоподобней. Фактическое же количество все же будет меньше указанных.
+-- | 
+
+
+
+-- |----------------------------------------
+-- | Вопрос 3. В какой части (частях) света находится больше аэропортов?
+-- |
+-- |
+
+select 
+	split_part(a.timezone, '/', 1) as world_region,
+	count(*) 
+from dst_project.airports a
+group by 1
+union 
+select
+	'Europe+Asia',
+	count(*) 
+from dst_project.airports a
+where a.timezone like 'Europe%'
+	or a.timezone like 'Asia%'
+order by 2 desc
+
+-- | world_region|count|
+-- | ------------|-----|
+-- | Europe+Asia |  104|
+-- | Europe      |   52|
+-- | Asia        |   52|
+
+
+
+
+-- |----------------------------------------
+-- | Вопрос 4. У какого рейса была самая большая задержка прибытия за все время сбора данных? Введите id рейса (flight_id)
+-- |
+-- | 157571
+
+select
+	(f.actual_arrival - f.scheduled_arrival) as delay_arrival
+	, f.flight_id
+	--, f.departure_airport, f.arrival_airport
+from dst_project.flights f
+where f.status = 'Arrived'
+order by 1 desc 
+limit 1
+
+
+
+/* ---------------------------------------
+	Задание 4.4 
+------------------------------------------ */
+
+-- |----------------------------------------
+-- | Вопрос 1. Когда был запланирован самый первый вылет, сохраненный в базе данных?
+-- |
+
+select 
+	to_char(date_trunc('day', min(f.scheduled_departure)), 'DD.MM.YYYY') as min_scheduled_departure
+from flights f
+where 
+	f.status != 'Cancelled'
+
+
+
+-- |----------------------------------------
+-- | Вопрос 2. Сколько минут составляет запланированное время полета в самом длительном рейсе?
+-- |
+
+
+-- | 
+-- | решение №1, без конвертации в минуты
+-- | 
+select
+	distinct f.flight_no
+	, f.scheduled_arrival - f.scheduled_departure as flight_duration
+	, minute(f.scheduled_arrival - f.scheduled_departure)
+	, f.departure_airport, f.arrival_airport 
+from flights f 
+order by 2 desc, 1
+limit 3
+
+
+
+-- | 
+-- |  решение №2, с конвертацией в минуты (с использованием CTE)
+-- | 
+with mfd(duration) as (
+	select
+		 max(f.scheduled_arrival - f.scheduled_departure)
+	from flights f 
+		group by f.flight_no
+		order by 1 desc
+		limit 1
+	) 
+select
+	date_part('hour', duration) * 60 + date_part('minute', duration) as duration_mm
+from mfd 
+-- | 530
+
+
+
+
+-- |----------------------------------------
+-- | Вопрос 3. Между какими аэропортами пролегает самый длительный по времени запланированный рейс?
+-- | DME - UUS
+-- | DME - AAQ
+-- | DME - PSC
+-- | SVO - UUS
+
+
+/*
+select 
+	a.airport_code,
+	a.city ,
+	a.timezone 
+from airports a 
+where 
+	a.airport_code in ('UUS', 'AAQ', 'PSC', 'DME', 'SVO')
+	--a.airport_code in ('PKC')
+*/
+
+select
+	distinct f.flight_no
+	, f.scheduled_arrival - f.scheduled_departure as flight_duration
+	, f.departure_airport
+	, f.arrival_airport 
+from flights f 
+where 
+	(f.departure_airport = 'DME' and f.arrival_airport = 'UUS')
+	or (f.departure_airport = 'DME' and f.arrival_airport = 'AAQ')
+	or (f.departure_airport = 'DME' and f.arrival_airport = 'PSC')
+	or (f.departure_airport = 'SVO' and f.arrival_airport = 'UUS')
+order by 2 desc, 1
+limit 1
+	
+-- | DME - UUS
+
+
+
+-- |----------------------------------------
+-- | Вопрос 4. Сколько составляет средняя дальность полета среди всех самолетов в минутах? 
+-- | Секунды округляются в меньшую сторону (отбрасываются до минут).
+-- |
+
+select
+	avg(f.scheduled_arrival - f.scheduled_departure)
+from flights f 
+-- | 02:08:21.828108
+
+
+select
+	date_part('hour', avg(f.scheduled_arrival - f.scheduled_departure))*60
+	+ date_part('minute', avg(f.scheduled_arrival - f.scheduled_departure)) as avg_duration_mm
+from flights f 
+-- | 128
+
+
+
+
+/* ---------------------------------------
+	Задание 4.5 
+------------------------------------------ */
+
+-- |----------------------------------------
+-- | Вопрос 1. Мест какого класса у SU9 больше всего?
+-- |
+
+select
+	s.fare_conditions,
+	count(*)
+from aircrafts a 
+join seats s on s.aircraft_code = a.aircraft_code 
+where a.aircraft_code = 'SU9'
+group by 1
+order by 2 desc
+
+
+
+-- |----------------------------------------
+-- | Вопрос 2. Какую самую минимальную стоимость составило бронирование за всю историю?
+-- |
+
+select 
+	min(b.total_amount)
+from bookings b 
+
+
+-- |----------------------------------------
+-- | Вопрос 3. Какой номер места был у пассажира с id = 4313 788533?
+-- |
+
+select
+	t.passenger_id,
+	bp.seat_no 
+from tickets t 
+join boarding_passes bp on bp.ticket_no = t.ticket_no 
+where t.passenger_id = '4313 788533'
+
+
+
+
+
+
+
+/* -----------------------------------------------------------------------------------
+	5. Предварительный анализ 
+--------------------------------------------------------------------------------------
+	
+	
+-------------------------------------------------------------------------------------- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- |----------------------------------------
+-- |	End of script 
+-- |
+/*
+
+
+
+select
+	 a.model 
+	, count(s.aircraft_code) as model_count
+from seats s 
+join aircrafts a on a.aircraft_code = s.aircraft_code 
+where model like 'Boeing%'
+group by 1
+union 
+select 
+	'Total:'
+	, count(s.aircraft_code)
+from seats s 
+join aircrafts a on a.aircraft_code = s.aircraft_code 
+where model like 'Boeing%'
+order by 2 desc 
+
+
+
+
+
+
+
+*/
