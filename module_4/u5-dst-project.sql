@@ -42,19 +42,10 @@ order by 2 desc
 -- |
 
 select 
-	--distinct status
 	count(distinct status)
 from flights f 
 
 
-/*
-Departed
-Arrived
-On Time
-Cancelled
-Delayed
-Scheduled
-*/
 
 -- |----------------------------------------
 -- | Вопрос 2. Какое количество самолетов находятся в воздухе на момент среза в базе 
@@ -66,6 +57,7 @@ select
 	count(*)
 from flights f 
 where status = 'Departed'
+
 
 
 -- |----------------------------------------
@@ -91,7 +83,6 @@ where
 -- | P.S. 
 -- | состоявшийся рейс означает, что он не отменён, и самолёт прибыл в пункт назначения
 -- | 
-
 
 
 select 
@@ -137,6 +128,7 @@ where a.model like 'Boeing%'
 		or a.model like 'Airbus%'
 group by 1
 order by 1
+
 
 
 
@@ -215,13 +207,6 @@ where a.timezone like 'Europe%'
 	or a.timezone like 'Asia%'
 order by 2 desc
 
--- | world_region|count|
--- | ------------|-----|
--- | Europe+Asia |  104|
--- | Europe      |   52|
--- | Asia        |   52|
-
-
 
 
 -- |----------------------------------------
@@ -232,7 +217,6 @@ order by 2 desc
 select
 	(f.actual_arrival - f.scheduled_arrival) as delay_arrival
 	, f.flight_id
-	--, f.departure_airport, f.arrival_airport
 from dst_project.flights f
 where f.status = 'Arrived'
 order by 1 desc 
@@ -264,10 +248,10 @@ where
 -- | 
 -- | решение №1, без конвертации в минуты
 -- | 
-select
+
+	select
 	distinct f.flight_no
 	, f.scheduled_arrival - f.scheduled_departure as flight_duration
-	, minute(f.scheduled_arrival - f.scheduled_departure)
 	, f.departure_airport, f.arrival_airport 
 from flights f 
 order by 2 desc, 1
@@ -301,18 +285,6 @@ from mfd
 -- | DME - PSC
 -- | SVO - UUS
 
-
-/*
-select 
-	a.airport_code,
-	a.city ,
-	a.timezone 
-from airports a 
-where 
-	a.airport_code in ('UUS', 'AAQ', 'PSC', 'DME', 'SVO')
-	--a.airport_code in ('PKC')
-*/
-
 select
 	distinct f.flight_no
 	, f.scheduled_arrival - f.scheduled_departure as flight_duration
@@ -336,18 +308,20 @@ limit 1
 -- | Секунды округляются в меньшую сторону (отбрасываются до минут).
 -- |
 
+
+-- | первый вариант решения
 select
-	avg(f.scheduled_arrival - f.scheduled_departure)
+	date_trunc('minute', avg(f.scheduled_arrival - f.scheduled_departure))
 from flights f 
--- | 02:08:21.828108
+-- | 02:08:00
 
 
+-- | второй вариант решения
 select
 	date_part('hour', avg(f.scheduled_arrival - f.scheduled_departure))*60
 	+ date_part('minute', avg(f.scheduled_arrival - f.scheduled_departure)) as avg_duration_mm
 from flights f 
 -- | 128
-
 
 
 
@@ -367,6 +341,7 @@ join seats s on s.aircraft_code = a.aircraft_code
 where a.aircraft_code = 'SU9'
 group by 1
 order by 2 desc
+-- | Economy
 
 
 
@@ -380,7 +355,7 @@ from bookings b
 
 
 -- |----------------------------------------
--- | Вопрос 3. Какой номер места был у пассажира с id = 4313 788533?
+-- | Вопрос 3. Какой номер места был у пассажира с id = '4313 788533'?
 -- |
 
 select
@@ -397,22 +372,109 @@ where t.passenger_id = '4313 788533'
 
 
 /* -----------------------------------------------------------------------------------
+	
 	5. Предварительный анализ 
---------------------------------------------------------------------------------------
-	
-	
+
 -------------------------------------------------------------------------------------- */
 
+select 
+	airport_code,
+	airport_name, 
+	timezone 
+from airports
+where city = 'Anapa'
+
+
+-- |----------------------------------------
+-- | Вопрос 1. Анапа — курортный город на юге России. Сколько рейсов прибыло в Анапу за 2017 год?
+-- |
+
+select
+	2017 as year,
+	count(*) as flight_count
+from flights f 
+where 
+	f.arrival_airport = 'AAQ'
+	and f.status = 'Arrived'
+	and date_part('year', f.actual_arrival) = 2017
+
+
+	
+-- |----------------------------------------
+-- | Вопрос 2. Сколько рейсов из Анапы вылетело зимой 2017 года?
+-- |
+
+
+-- | первый вариант решения
+select
+	count(*) as flight_count
+from flights f 
+where 
+	f.departure_airport = 'AAQ'
+	and f.status != 'Cancelled'
+	and date_part('year', f.actual_arrival) = 2017
+	and date_part('month', f.actual_arrival) in (01, 02)
+
+
+-- | второе решение
+select
+	count(*) as flight_count
+from flights f 
+where 
+	f.departure_airport = 'AAQ'
+	and f.status != 'Cancelled'
+	and f.actual_arrival between '2017-01-01 00:00:00' and '2017-02-28 23:59:59'
+	
+	
+
+-- |----------------------------------------
+-- | Вопрос 3. Посчитайте количество отмененных рейсов из Анапы за все время
+-- |
+
+select
+	count(*) as flight_count
+from flights f 
+where 
+	f.departure_airport = 'AAQ'
+	and f.status = 'Cancelled'
+
+
+
+-- |----------------------------------------
+-- | Вопрос 4. Сколько рейсов из Анапы не летают в Москву?
+-- |
+
+select 
+	--count(distinct f.flight_no) 
+	count(f.flight_id) 
+from flights f
+join airports a on a.airport_code = f.arrival_airport 
+where 
+	a.city != 'Moscow'
+	and f.departure_airport = 'AAQ'
 
 
 
 
+-- |----------------------------------------
+-- | Вопрос 5. Какая модель самолета летящего на рейсах из Анапы имеет больше всего мест?
+-- |
 
-
-
-
-
-
+select 
+	a2.model,
+	count(s.seat_no) as seat_count
+from seats s
+join aircrafts a2 on a2.aircraft_code = s.aircraft_code 
+where s.aircraft_code in (
+		select 
+			f.aircraft_code
+		from flights f
+		where 
+			f.departure_airport = 'AAQ'
+		group by f.aircraft_code
+		)
+group by 1
+order by 2 desc 
 
 
 
@@ -430,27 +492,6 @@ where t.passenger_id = '4313 788533'
 -- |	End of script 
 -- |
 /*
-
-
-
-select
-	 a.model 
-	, count(s.aircraft_code) as model_count
-from seats s 
-join aircrafts a on a.aircraft_code = s.aircraft_code 
-where model like 'Boeing%'
-group by 1
-union 
-select 
-	'Total:'
-	, count(s.aircraft_code)
-from seats s 
-join aircrafts a on a.aircraft_code = s.aircraft_code 
-where model like 'Boeing%'
-order by 2 desc 
-
-
-
 
 
 
