@@ -89,8 +89,8 @@ select
 	count(f.flight_id)
 from flights f 
 where status = 'Arrived'
-	and (actual_departure between '2017-04-01' and '2017-09-01'
-		or actual_arrival between '2017-04-01' and '2017-09-01')
+	and (date_trunc('day', actual_departure) between '2017-04-01' and '2017-09-01'
+		or date_trunc('day', actual_arrival) between '2017-04-01' and '2017-09-01')
 
 
 		
