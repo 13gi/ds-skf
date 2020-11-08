@@ -570,6 +570,41 @@ order by f.scheduled_departure
 
 
 
+/* -----------------------------------------------------------------------------------
+	Скрипты некоторых проверок 
+--------------------------------------------------------------------------------------
+			ПРОЕКТ 4. АВИАРЕЙСЫ БЕЗ ПОТЕРЬ (ADVANCED)
+
+-------------------------------------------------------------------------------------- */
+
+-- | количество мест в саммолете по классам
+
+select 
+	aircraft_code,
+	fare_conditions,
+	count(seat_no) 
+from seats s
+where aircraft_code in ('SU9', '733')
+group by aircraft_code, fare_conditions
+order by 1, 2
+
+
+-- | проверка что по рейсам в базе нет информации о продаже билетов
+select
+	fl.*,
+	tf.*
+from flights fl 
+left join ticket_flights tf on tf.flight_id = fl.flight_id
+where 
+	fl.departure_airport = 'AAQ'
+	and (date_trunc('month', fl.scheduled_departure) in ('2017-01-01', '2017-02-01', '2017-12-01'))
+	--and fl.status not in ('Cancelled')
+	and fl.flight_no in ('PG0194')
+limit 100
+
+
+
+
 
 
 -- |----------------------------------------
@@ -579,5 +614,9 @@ order by f.scheduled_departure
 
 
 
-
 */
+
+
+
+
+
